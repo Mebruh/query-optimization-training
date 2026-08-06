@@ -1,0 +1,303 @@
+
+
+:root {
+  --paper:      #EEF1E9;
+  --stripe:     #E7EBE2;
+  --ink:        #16211C;
+  --ink-soft:   #566258;
+  --deep:       #22493D;
+  --deep-lift:  #2E5F4F;
+  --gold:       #A87A22;
+  --rule:       #C4CEBC;
+
+  --display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --body:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --gap-xs: 0.5rem;
+  --gap-s:  0.875rem;
+  --gap-m:  1.75rem;
+  --gap-l:  3rem;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur:  380ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: var(--paper);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--paper)  0px,
+    var(--paper)  44px,
+    var(--stripe) 44px,
+    var(--stripe) 88px
+  );
+  color: var(--ink);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+
+.ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.frag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  will-change: transform, opacity;
+  animation: drift linear infinite;
+}
+
+.frag--chip {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--deep);
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.3em 0.6em;
+  white-space: nowrap;
+}
+
+.frag--glyph svg { display: block; }
+.frag--glyph { color: var(--deep); }
+
+@keyframes drift {
+  0%   { opacity: 0;    transform: translate3d(var(--x0), var(--y0), 0) rotate(var(--r0)); }
+  12%  { opacity: 0.38; }
+  88%  { opacity: 0.38; }
+  100% { opacity: 0;    transform: translate3d(var(--x1), var(--y1), 0) rotate(var(--r1)); }
+}
+
+
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+  transition: opacity 300ms var(--ease);
+}
+
+.boot.is-done { opacity: 0; pointer-events: none; }
+
+.boot__text {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.boot__text::after {
+  content: "";
+  animation: dots 1.4s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%   { content: ""; }
+  25%  { content: "."; }
+  50%  { content: ".."; }
+  75%  { content: "..."; }
+}
+
+
+.stage {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--gap-m);
+}
+
+.screen {
+  width: min(46rem, 100%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-m);
+}
+
+.screen.is-entering { animation: screen-in var(--dur) var(--ease) both; }
+.screen.is-leaving  { animation: screen-out 240ms var(--ease) both; }
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes screen-out {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: translate3d(0, -10px, 0); }
+}
+
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 400;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+}
+
+.eyebrow::before,
+.eyebrow::after {
+  content: "";
+  width: 1.6rem;
+  height: 1px;
+  background: var(--gold);
+}
+
+.title {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.6rem, 9.5vw, 6rem);
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.subtitle {
+  font-family: var(--body);
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0;
+  max-width: 34rem;
+  text-wrap: pretty;
+}
+
+.screen-label {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(2.4rem, 8vw, 4.5rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--gap-s);
+  width: 100%;
+}
+
+.btn {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.95em 3.4em;
+  min-width: 13rem;
+  border-radius: 2px;
+  border: 1px solid var(--deep);
+  cursor: pointer;
+  transition: transform 160ms var(--ease),
+              background-color 160ms var(--ease),
+              color 160ms var(--ease);
+  touch-action: manipulation;
+}
+
+.btn:hover  { transform: translate3d(0, -2px, 0); }
+.btn:active { transform: translate3d(0, 1px, 0); }
+
+.btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.btn--primary {
+  background: var(--deep);
+  color: var(--paper);
+}
+.btn--primary:hover { background: var(--deep-lift); }
+
+.btn--ghost {
+  background: transparent;
+  color: var(--deep);
+}
+.btn--ghost:hover { background: rgba(34, 73, 61, 0.07); }
+
+.btn--back {
+  font-size: 0.72rem;
+  padding: 0.7em 1.8em;
+  min-width: 0;
+  border-color: var(--rule);
+  background: transparent;
+  color: var(--ink-soft);
+}
+.btn--back:hover { border-color: var(--deep); color: var(--deep); }
+
+
+.devbar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+}
+
+.devbar button {
+  margin-left: auto;
+  font: inherit;
+  padding: 0.35em 0.9em;
+  border: 1px solid rgba(238, 241, 233, 0.35);
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.devbar button:hover { background: rgba(238, 241, 233, 0.12); }
+
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .frag { opacity: 0.3; }
+}
+
+@media (max-width: 34rem) {
+  .btn { min-width: 100%; }
+  .actions { max-width: 20rem; }
+}
