@@ -1,8 +1,10 @@
 export const MANIFEST = [
-  // 'assets/images/table-scan.webp',
-  // 'assets/images/index-scan.webp',
+  'assets/images/BackgroundNoFence.png',
+  'assets/images/TrailFlatbed03.png',
+  'assets/images/Train.png',
+  'assets/images/CrateBig.png',
 ];
-
+ 
 export function preloadImages(sources = MANIFEST) {
   return Promise.all(
     sources.map(
@@ -19,7 +21,7 @@ export function preloadImages(sources = MANIFEST) {
     )
   );
 }
-
+ 
 export async function waitForFonts() {
   if (!document.fonts) return;
   try {
@@ -27,3 +29,4 @@ export async function waitForFonts() {
   } catch {
   }
 }
+
