@@ -1,3 +1,6 @@
+import { fitCanvas } from './canvas.js';
+import { logEvent } from './logger.js';
+
 function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -22,6 +25,7 @@ function renderStart({ go }) {
   );
 
   const actions = el('div', 'actions');
+
   actions.appendChild(button('Start', 'btn--primary', () => go('guide', { via: 'start_button' })));
   actions.appendChild(button('Guide', 'btn--ghost', () => go('guide', { via: 'guide_button' })));
   screen.appendChild(actions);
@@ -65,11 +69,35 @@ const COMPLETIONS = {
   b: 'WHERE YEAR(order_date) >= "2020"',
 };
 
+const CORRECT_LANE = 'a';
+
+const FEEDBACK = {
+  correct: 'Congratulations!',
+  wrong: 'Unfortunately, that is not right.',
+};
+
+const EXPLANATION = [
+  ['Train A is the more optimized query.'],
+  [
+    'Train A compares ', { code: 'order_date' },
+    ' directly, so the database can use an index on that column and jump straight to the matching rows.',
+  ],
+  [
+    'Train B wraps the column in ', { code: 'YEAR()' },
+    '. That function has to be evaluated for every row before the condition can be tested, so the index cannot be used and the database falls back to scanning the entire table.',
+  ],
+  [
+    'A condition an index can work with is called ', { code: 'sargable' },
+    '. Keep the column bare on one side of the comparison.',
+  ],
+];
+
 function sprite(className, src, { alt = '', optional = false } = {}) {
   const img = new Image();
   img.className = className;
   img.alt = alt;
   img.draggable = false;
+
   if (optional) img.onerror = () => img.remove();
   img.src = src;
   return img;
@@ -88,12 +116,27 @@ function renderCar() {
   return car;
 }
 
-function renderLane(id, label) {
+function para(className, parts) {
+  const node = el('p', className);
+  parts.forEach((part) => {
+    if (typeof part === 'string') node.appendChild(document.createTextNode(part));
+    else node.appendChild(el('code', 'feedback__code', part.code));
+  });
+  return node;
+}
+
+function renderLane(id, label, onPick) {
   const lane = el('div', 'lane');
   lane.dataset.lane = id;
+
   lane.style.setProperty('--car-count', CARS_PER_TRAIN);
 
-  lane.appendChild(el('span', 'lane__tag', label));
+  const pick = el('button', 'lane__pick', label);
+  pick.type = 'button';
+  pick.dataset.lane = id;
+  pick.setAttribute('aria-label', `Choose ${label}: ${COMPLETIONS[id]}`);
+  pick.addEventListener('click', () => onPick(id));
+  lane.appendChild(pick);
   lane.appendChild(sprite('shed', 'assets/images/ElectricalShed.png', { optional: true }));
 
   const consist = el('div', 'consist');
@@ -102,27 +145,89 @@ function renderLane(id, label) {
   lane.appendChild(consist);
   lane.appendChild(el('p', 'query', COMPLETIONS[id]));
 
-  lane.setAttribute('role', 'img');
-  lane.setAttribute(
-    'aria-label',
-    `${label}, carrying the completion: ${COMPLETIONS[id]}`
-  );
+  return { lane, pick };
+}
 
-  return lane;
+function renderFeedback() {
+  const overlay = el('div', 'feedback');
+  overlay.hidden = true;
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+
+  const card = el('div', 'feedback__card');
+  const title = el('h3', 'feedback__title');
+  card.appendChild(title);
+  EXPLANATION.forEach((parts, i) => {
+    card.appendChild(para(i === 0 ? 'feedback__lead' : 'feedback__body', parts));
+  });
+
+  const close = el('button', 'btn btn--primary feedback__close', 'Continue');
+  close.type = 'button';
+  close.addEventListener('click', () => {
+    overlay.hidden = true;
+    logEvent('feedback_dismiss', { screen: 'game1' });
+  });
+  card.appendChild(close);
+
+  overlay.appendChild(card);
+
+  return {
+    overlay,
+    show(correct) {
+      title.textContent = correct ? FEEDBACK.correct : FEEDBACK.wrong;
+      overlay.dataset.result = correct ? 'correct' : 'wrong';
+      overlay.hidden = false;
+      close.focus();
+    },
+  };
 }
 
 function renderGame1() {
   const screen = el('div', 'screen screen--game');
   screen.appendChild(el('p', 'eyebrow', 'Round 1'));
   screen.appendChild(
-    el('h2', 'screen-label', 'Choose the most optimized clause of the following query')
+    el('h2', 'screen-label', 'Choose the most optimized clause for the following query')
   );
   screen.appendChild(el('p', 'stem', QUERY_STEM));
 
-  const lanes = el('div', 'lanes');
-  lanes.appendChild(renderLane('a', 'Train A'));
-  lanes.appendChild(renderLane('b', 'Train B'));
-  screen.appendChild(lanes);
+  const feedback = renderFeedback();
+  const picks = [];
+  let answered = false;
+  const shownAt = performance.now();
+
+  const onPick = (id) => {
+    if (answered) return;
+    answered = true;
+
+    const correct = id === CORRECT_LANE;
+    picks.forEach((btn) => {
+      btn.disabled = true;
+      if (btn.dataset.lane === id) btn.classList.add('is-picked');
+      if (btn.dataset.lane === CORRECT_LANE) btn.classList.add('is-answer');
+    });
+
+    logEvent('answer', {
+      screen: 'game1',
+      chose: id,
+      correct,
+      response_ms: Math.round(performance.now() - shownAt),
+    });
+
+    feedback.show(correct);
+  };
+
+  const frame = el('div', 'canvas-frame');
+  const canvas = el('div', 'canvas');
+  ['a', 'b'].forEach((id, i) => {
+    const { lane, pick } = renderLane(id, i === 0 ? 'Train A' : 'Train B', onPick);
+    picks.push(pick);
+    canvas.appendChild(lane);
+  });
+  frame.appendChild(canvas);
+  screen.appendChild(frame);
+  screen.appendChild(feedback.overlay);
+
+  requestAnimationFrame(() => fitCanvas(canvas));
 
   return screen;
 }
