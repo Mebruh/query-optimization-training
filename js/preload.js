@@ -3,6 +3,7 @@ export const MANIFEST = [
   'assets/images/TrailFlatbed03.png',
   'assets/images/Train.png',
   'assets/images/CrateBig.png',
+  'assets/images/ElectricalShed.png',
 ];
  
 export function preloadImages(sources = MANIFEST) {
@@ -29,4 +30,5 @@ export async function waitForFonts() {
   } catch {
   }
 }
+
 
