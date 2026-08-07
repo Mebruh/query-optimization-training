@@ -26,9 +26,7 @@ function renderStart({ go }) {
   );
 
   const actions = el('div', 'actions');
-
   actions.appendChild(button('Start', 'btn--primary', () => go('guide', { via: 'start_button' })));
-  actions.appendChild(button('Guide', 'btn--ghost', () => go('guide', { via: 'guide_button' })));
   screen.appendChild(actions);
 
   return screen;
@@ -179,7 +177,8 @@ function runRace(consists) {
   );
 }
 
-function renderFeedback(onContinue) {
+function renderFeedback({ onContinue, label = 'Continue' } = {}) {
+  let handler = onContinue;
   const overlay = el('div', 'feedback');
   overlay.hidden = true;
   overlay.setAttribute('role', 'dialog');
@@ -187,26 +186,35 @@ function renderFeedback(onContinue) {
 
   const card = el('div', 'feedback__card');
   const title = el('h3', 'feedback__title');
+  const text = el('div', 'feedback__text');
   card.appendChild(title);
-  EXPLANATION.forEach((parts, i) => {
-    card.appendChild(para(i === 0 ? 'feedback__lead' : 'feedback__body', parts));
-  });
+  card.appendChild(text);
 
-  const close = el('button', 'btn btn--primary feedback__close', 'Continue');
+  const close = el('button', 'btn btn--primary feedback__close', label);
   close.type = 'button';
   close.addEventListener('click', () => {
     overlay.hidden = true;
-    onContinue();
+    handler?.();
   });
   card.appendChild(close);
-
   overlay.appendChild(card);
 
   return {
     overlay,
-    show(correct) {
-      title.textContent = correct ? FEEDBACK.correct : FEEDBACK.wrong;
-      overlay.dataset.result = correct ? 'correct' : 'wrong';
+    show(result, content, action) {
+      close.textContent = action?.label ?? label;
+      handler = action?.onContinue ?? onContinue;
+
+      title.textContent = content
+        ? content.title
+        : result === 'correct' ? FEEDBACK.correct : FEEDBACK.wrong;
+
+      text.replaceChildren();
+      (content ? content.body : EXPLANATION).forEach((parts, i) => {
+        text.appendChild(para(i === 0 ? 'feedback__lead' : 'feedback__body', parts));
+      });
+
+      overlay.dataset.result = result;
       overlay.hidden = false;
       close.focus();
     },
@@ -221,7 +229,7 @@ function renderGame1({ go }) {
   );
   screen.appendChild(el('p', 'stem', QUERY_STEM));
 
-  const feedback = renderFeedback(() => go('game2', { via: 'continue_button' }));
+  const feedback = renderFeedback({ onContinue: () => go('game2', { via: 'continue_button' }) });
   const picks = [];
   const consists = {};
   let answered = false;
@@ -248,7 +256,7 @@ function renderGame1({ go }) {
         if (btn.dataset.lane === CORRECT_LANE) btn.classList.add('is-answer');
       });
       logEvent('race_end', { screen: 'game1' });
-      feedback.show(correct);
+      feedback.show(correct ? 'correct' : 'wrong');
     });
   };
 
@@ -270,10 +278,68 @@ function renderGame1({ go }) {
 }
 
 const GAME2 = {
-  prompt: 'Swap out the heavy crates to make a better optimized query',
-  scene: { width: 1440, height: 560 },
-  cars: 3,
-  tokens: ['SELECT', '*', 'FROM', 'orders', 'WHERE', 'YEAR(order_date)', '>', '"2020"'],
+  prompt: 'Swap out the heavy crates to make a better optimized query and save fuel',
+  scene: { width: 1440, height: 470 },
+  cars: 4,
+  deck: ['SELECT', '*', 'FROM', 'orders', 'WHERE', 'YEAR(order_date)', '>', '"2020"'],
+  tray: ['order_date', '"2020-01-01"', 'order_no'],
+  answer: ['SELECT', 'order_no', 'FROM', 'orders', 'WHERE', 'order_date', '>', '"2020-01-01"'],
+};
+
+const RUN2 = {
+  scrollPx: 2960,
+  scrollMs: 2800,
+  approachPx: 172,
+  approachMs: 1100,
+  overlapMs: 650,
+  settleMs: 400,
+  fuelCorrect: 0.62,
+  fuelWrong: 0.08,
+  scrollEasing: 'cubic-bezier(0.35, 0, 0.35, 1)',
+  approachEasing: 'cubic-bezier(0.3, 0, 0.4, 1)',
+};
+
+const OPTIMAL = 'SELECT order_no FROM orders WHERE order_date > "2020-01-01"';
+
+const GAME2_FEEDBACK = {
+  incomplete: {
+    title: 'The train is not loaded.',
+    body: [
+      ['Every slot needs a crate before the train can run.'],
+    ],
+  },
+  wrong: {
+    title: 'Unfortunately, that is not right.',
+    body: [
+      ['The optimized query is ', { code: OPTIMAL }, '.'],
+      [
+        'Selecting only ', { code: 'order_no' },
+        ' means the database reads one column instead of every column in the table, so there is far less data to move.',
+      ],
+      [
+        'Comparing ', { code: 'order_date' },
+        ' directly lets an index on that column do the work. Wrapping it in ', { code: 'YEAR()' },
+        ' forces the database to compute that function for every row, so it has to scan the whole table.',
+      ],
+      ['That is why your train burned so much fuel.'],
+    ],
+  },
+  correct: {
+    title: 'Congratulations!',
+    body: [
+      ['The train is carrying ', { code: OPTIMAL }, '.'],
+      [
+        'Selecting only ', { code: 'order_no' },
+        ' means the database reads one column instead of every column in the table, so there is far less data to move.',
+      ],
+      [
+        'Comparing ', { code: 'order_date' },
+        ' directly lets an index on that column do the work, instead of computing ', { code: 'YEAR()' },
+        ' for every row and scanning the whole table.',
+      ],
+      ['Less work for the database means the query is more efficient which means less fuel is used for the train.'],
+    ],
+  },
 };
 
 function renderBareCar() {
@@ -282,55 +348,223 @@ function renderBareCar() {
   return car;
 }
 
-function makeToken(text, canvas) {
-  const token = el('div', 'token');
-  token.dataset.token = text;
-  token.appendChild(sprite('crate', 'assets/images/CrateBig.png'));
-  token.appendChild(el('span', 'token__text', text));
-
-  makeDraggable(token, {
-    scale: () => parseFloat(canvas.dataset.scale),
-    onStart: () => token.classList.add('is-dragging'),
-    onEnd: ({ x, y }) => {
-      token.classList.remove('is-dragging');
-      logEvent('token_drop', {
-        screen: 'game2',
-        token: text,
-        dx: Math.round(x),
-        dy: Math.round(y),
-      });
-    },
-  });
-
-  return token;
-}
-
-function renderGame2() {
+function renderGame2({ go }) {
   const screen = el('div', 'screen screen--game');
   screen.appendChild(el('p', 'eyebrow', 'Round 2'));
   screen.appendChild(el('h2', 'screen-label', GAME2.prompt));
+
+  const deck = [...GAME2.deck];
+  const tray = [...GAME2.tray];
 
   const frame = el('div', 'canvas-frame');
   const canvas = el('div', 'canvas canvas--yard');
 
   const lane = el('div', 'lane');
   lane.appendChild(sprite('shed', 'assets/images/ElectricalShed.png', { optional: true }));
-
   const consist = el('div', 'consist');
   for (let i = 0; i < GAME2.cars; i++) consist.appendChild(renderBareCar());
   consist.appendChild(sprite('loco', 'assets/images/Train.png'));
   lane.appendChild(consist);
   canvas.appendChild(lane);
 
-  const row = el('div', 'cargo-row');
-  GAME2.tokens.forEach((text) => row.appendChild(makeToken(text, canvas)));
-  canvas.appendChild(row);
+  const slotRow = el('div', 'deck-slots');
+  const slots = deck.map((_, i) => {
+    const slot = el('div', 'slot');
+    slot.dataset.index = String(i);
+    slotRow.appendChild(slot);
+    return slot;
+  });
+  canvas.appendChild(slotRow);
+
+  const fuel = el('div', 'fuel');
+  fuel.appendChild(el('p', 'fuel__label', 'Fuel'));
+  const fuelTrack = el('div', 'fuel__track');
+  const fuelLevel = el('div', 'fuel__level');
+  fuelTrack.appendChild(fuelLevel);
+  fuel.appendChild(fuelTrack);
+  canvas.appendChild(fuel);
+
+  const trayBox = el('div', 'tray');
+  trayBox.appendChild(el('p', 'tray__label', 'SQL terms to choose from'));
+  const trayRow = el('div', 'tray__row');
+  trayBox.appendChild(trayRow);
+  canvas.appendChild(trayBox);
 
   frame.appendChild(canvas);
   screen.appendChild(frame);
 
+  const feedback = renderFeedback({ label: 'Retry' });
+  screen.appendChild(feedback.overlay);
+
+  const runRow = el('div', 'actions actions--run');
+  const run = el('button', 'btn btn--primary', 'Run query and start train');
+  run.type = 'button';
+  runRow.appendChild(run);
+  screen.appendChild(runRow);
+
+  const centreOf = (node) => {
+    const r = node.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  };
+
+  const hits = (node, point) => {
+    const r = node.getBoundingClientRect();
+    return point.x >= r.left && point.x <= r.right && point.y >= r.top && point.y <= r.bottom;
+  };
+
+  function drop(from, token, point) {
+    const target = slots.findIndex((slot) => hits(slot, point));
+
+    if (target >= 0) {
+      const occupant = deck[target];
+      if (from.type === 'slot') {
+        deck[from.index] = occupant ?? null;
+        deck[target] = token;
+      } else {
+        tray.splice(from.index, 1);
+        deck[target] = token;
+        if (occupant) tray.push(occupant);
+      }
+      return { moved: true, to: `slot ${target}` };
+    }
+
+    if (hits(trayBox, point)) {
+      if (from.type === 'slot') {
+        deck[from.index] = null;
+        tray.push(token);
+        return { moved: true, to: 'tray' };
+      }
+      return { moved: false, to: 'tray' };
+    }
+
+    return { moved: false, to: 'none' };
+  }
+
+  function makeToken(token, from) {
+    const node = el('div', 'token');
+    node.dataset.token = token;
+    node.appendChild(sprite('crate', 'assets/images/CrateBig.png'));
+    node.appendChild(el('span', 'token__text', token));
+
+    makeDraggable(node, {
+      scale: () => parseFloat(canvas.dataset.scale),
+      onStart: () => node.classList.add('is-dragging'),
+      onEnd: () => {
+        node.classList.remove('is-dragging');
+        const result = drop(from, token, centreOf(node));
+        logEvent('token_drop', {
+          screen: 'game2',
+          token,
+          from: from.type === 'slot' ? `slot ${from.index}` : 'tray',
+          to: result.to,
+          moved: result.moved,
+        });
+        requestAnimationFrame(paint);
+      },
+    });
+
+    return node;
+  }
+
+  function paint() {
+    slots.forEach((slot, i) => {
+      slot.replaceChildren();
+      const token = deck[i];
+      if (token) slot.appendChild(makeToken(token, { type: 'slot', index: i }));
+    });
+    trayRow.replaceChildren();
+    tray.forEach((token, i) => {
+      trayRow.appendChild(makeToken(token, { type: 'tray', index: i }));
+    });
+  }
+
+  function departure(correct) {
+    const target = correct ? RUN2.fuelCorrect : RUN2.fuelWrong;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduced) {
+      fuelLevel.style.transform = `scaleX(${target})`;
+      [consist, slotRow].forEach((node) => {
+        node.style.transform = `translateX(${RUN2.approachPx}px)`;
+      });
+      return Promise.resolve();
+    }
+
+    const startsAt = Math.max(0, RUN2.scrollMs - RUN2.overlapMs);
+    const totalMs = startsAt + RUN2.approachMs;
+
+    fuelLevel.animate(
+      [{ transform: 'scaleX(1)' }, { transform: `scaleX(${target})` }],
+      { duration: totalMs, easing: 'linear', fill: 'forwards' }
+    );
+
+    const scroll = lane.animate(
+      [{ backgroundPositionX: '0px' }, { backgroundPositionX: `${-RUN2.scrollPx}px` }],
+      { duration: RUN2.scrollMs, easing: RUN2.scrollEasing, fill: 'forwards' }
+    );
+
+    const approach = new Promise((resolve) => {
+      setTimeout(() => {
+        const travel = [{ transform: 'translateX(0)' },
+                        { transform: `translateX(${RUN2.approachPx}px)` }];
+        const opts = { duration: RUN2.approachMs, easing: RUN2.approachEasing, fill: 'forwards' };
+        resolve(Promise.all([consist, slotRow].map((node) => node.animate(travel, opts).finished)));
+      }, startsAt);
+    });
+
+    return Promise.all([scroll.finished, approach])
+      .then(() => new Promise((resolve) => setTimeout(resolve, RUN2.settleMs)));
+  }
+
+  function resetDeparture() {
+    [consist, slotRow, fuelLevel, lane].forEach((node) => {
+      node.getAnimations().forEach((a) => a.cancel());
+      node.style.transform = '';
+    });
+    fuelLevel.style.transform = 'scaleX(1)';
+    lane.style.backgroundPositionX = '';
+    canvas.classList.remove('is-locked');
+    run.disabled = false;
+  }
+
+  run.addEventListener('click', () => {
+    if (run.disabled) return;
+
+    const complete = deck.every(Boolean);
+    const correct = complete && deck.every((t, i) => t === GAME2.answer[i]);
+    const state = !complete ? 'incomplete' : correct ? 'correct' : 'wrong';
+
+    logEvent('run', {
+      screen: 'game2',
+      query: deck.map((t) => t ?? '_').join(' '),
+      complete,
+      correct,
+    });
+
+    const action = correct
+      ? { label: 'Continue', onContinue: () => go('game3', { via: 'continue_button' }) }
+      : { label: 'Retry', onContinue: resetDeparture };
+
+    if (!complete) {
+      feedback.show(state, GAME2_FEEDBACK[state], action);
+      return;
+    }
+
+    canvas.classList.add('is-locked');
+    run.disabled = true;
+    departure(correct).then(() => feedback.show(state, GAME2_FEEDBACK[state], action));
+  });
+
+  paint();
   requestAnimationFrame(() => fitCanvas(canvas, GAME2.scene));
 
+  return screen;
+}
+
+function renderGame3() {
+  const screen = el('div', 'screen');
+  screen.appendChild(el('p', 'eyebrow', 'Round 3'));
+  screen.appendChild(el('h2', 'screen-label', 'Game 3'));
   return screen;
 }
 
@@ -340,6 +574,7 @@ export const SCREENS = {
   howto: { id: 'howto', ambient: false, render: renderHowTo },
   game1: { id: 'game1', ambient: false, render: renderGame1 },
   game2: { id: 'game2', ambient: false, render: renderGame2 },
+  game3: { id: 'game3', ambient: false, render: renderGame3 },
 };
 
 export const FIRST_SCREEN = 'start';
