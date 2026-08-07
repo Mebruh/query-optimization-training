@@ -1,5 +1,4 @@
-
-export function makeDraggable(el, { onStart, onMove, onEnd, bounds } = {}) {
+export function makeDraggable(el, { onStart, onMove, onEnd, bounds, scale } = {}) {
   let active = false;
   let startX = 0, startY = 0;
   let baseX = 0, baseY = 0;
@@ -17,6 +16,11 @@ export function makeDraggable(el, { onStart, onMove, onEnd, bounds } = {}) {
     return Math.min(Math.max(value, min), max);
   }
 
+  function currentScale() {
+    const s = typeof scale === 'function' ? scale() : scale;
+    return s && Number.isFinite(s) && s > 0 ? s : 1;
+  }
+
   function down(e) {
     active = true;
     el.setPointerCapture(e.pointerId);
@@ -29,8 +33,9 @@ export function makeDraggable(el, { onStart, onMove, onEnd, bounds } = {}) {
 
   function move(e) {
     if (!active) return;
-    x = baseX + (e.clientX - startX);
-    y = baseY + (e.clientY - startY);
+    const s = currentScale();
+    x = baseX + (e.clientX - startX) / s;
+    y = baseY + (e.clientY - startY) / s;
 
     if (bounds) {
       x = clamp(x, bounds.minX ?? -Infinity, bounds.maxX ?? Infinity);

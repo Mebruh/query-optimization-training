@@ -562,3 +562,61 @@ body {
   margin-top: 0.6rem;
   width: 100%;
 }
+
+.cargo-row {
+  position: absolute;
+  left: 12px;
+  bottom: 384px;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 3;
+}
+
+.token {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  will-change: transform;
+}
+
+.token .crate {
+  display: block;
+  height: 67px;
+  width: auto;
+}
+
+.token__text {
+  margin-top: -1px;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.25;
+  white-space: nowrap;
+  color: var(--ink);
+  background: rgba(238, 241, 233, 0.94);
+  border: 1px solid var(--rule);
+  border-top: 2px solid var(--gold);
+  border-radius: 0 0 2px 2px;
+  padding: 4px 7px;
+}
+
+.token img {
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.token.is-dragging {
+  z-index: 10;
+  cursor: grabbing;
+}
+
+.token.is-dragging .token__text {
+  background: var(--paper);
+  border-color: var(--deep);
+  border-top-color: var(--deep);
+}

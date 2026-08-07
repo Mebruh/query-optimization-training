@@ -1,5 +1,6 @@
 import { fitCanvas } from './canvas.js';
 import { logEvent } from './logger.js';
+import { makeDraggable } from './drag.js';
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -268,10 +269,68 @@ function renderGame1({ go }) {
   return screen;
 }
 
+const GAME2 = {
+  prompt: 'Swap out the heavy crates to make a better optimized query',
+  scene: { width: 1440, height: 560 },
+  cars: 3,
+  tokens: ['SELECT', '*', 'FROM', 'orders', 'WHERE', 'YEAR(order_date)', '>', '"2020"'],
+};
+
+function renderBareCar() {
+  const car = el('div', 'car');
+  car.appendChild(sprite('car__bed', 'assets/images/TrailFlatbed03.png'));
+  return car;
+}
+
+function makeToken(text, canvas) {
+  const token = el('div', 'token');
+  token.dataset.token = text;
+  token.appendChild(sprite('crate', 'assets/images/CrateBig.png'));
+  token.appendChild(el('span', 'token__text', text));
+
+  makeDraggable(token, {
+    scale: () => parseFloat(canvas.dataset.scale),
+    onStart: () => token.classList.add('is-dragging'),
+    onEnd: ({ x, y }) => {
+      token.classList.remove('is-dragging');
+      logEvent('token_drop', {
+        screen: 'game2',
+        token: text,
+        dx: Math.round(x),
+        dy: Math.round(y),
+      });
+    },
+  });
+
+  return token;
+}
+
 function renderGame2() {
-  const screen = el('div', 'screen');
+  const screen = el('div', 'screen screen--game');
   screen.appendChild(el('p', 'eyebrow', 'Round 2'));
-  screen.appendChild(el('h2', 'screen-label', 'Game 2'));
+  screen.appendChild(el('h2', 'screen-label', GAME2.prompt));
+
+  const frame = el('div', 'canvas-frame');
+  const canvas = el('div', 'canvas canvas--yard');
+
+  const lane = el('div', 'lane');
+  lane.appendChild(sprite('shed', 'assets/images/ElectricalShed.png', { optional: true }));
+
+  const consist = el('div', 'consist');
+  for (let i = 0; i < GAME2.cars; i++) consist.appendChild(renderBareCar());
+  consist.appendChild(sprite('loco', 'assets/images/Train.png'));
+  lane.appendChild(consist);
+  canvas.appendChild(lane);
+
+  const row = el('div', 'cargo-row');
+  GAME2.tokens.forEach((text) => row.appendChild(makeToken(text, canvas)));
+  canvas.appendChild(row);
+
+  frame.appendChild(canvas);
+  screen.appendChild(frame);
+
+  requestAnimationFrame(() => fitCanvas(canvas, GAME2.scene));
+
   return screen;
 }
 
