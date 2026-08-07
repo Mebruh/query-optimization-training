@@ -71,6 +71,14 @@ const COMPLETIONS = {
 
 const CORRECT_LANE = 'a';
 
+const RACE = {
+  distance: 636,
+  fastMs: 2600,
+  slowMs: 4100,
+  settleMs: 500,
+  easing: 'cubic-bezier(0.35, 0, 0.35, 1)',
+};
+
 const FEEDBACK = {
   correct: 'Congratulations!',
   wrong: 'Unfortunately, that is not right.',
@@ -142,13 +150,35 @@ function renderLane(id, label, onPick) {
   const consist = el('div', 'consist');
   for (let i = 0; i < CARS_PER_TRAIN; i++) consist.appendChild(renderCar());
   consist.appendChild(sprite('loco', 'assets/images/Train.png'));
+  consist.appendChild(el('p', 'query', COMPLETIONS[id]));
   lane.appendChild(consist);
-  lane.appendChild(el('p', 'query', COMPLETIONS[id]));
 
-  return { lane, pick };
+  return { lane, pick, consist };
 }
 
-function renderFeedback() {
+function runRace(consists) {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) {
+    Object.values(consists).forEach((node) => {
+      node.style.transform = `translateX(${RACE.distance}px)`;
+    });
+    return Promise.resolve();
+  }
+
+  const running = Object.entries(consists).map(([id, node]) => {
+    const duration = id === CORRECT_LANE ? RACE.fastMs : RACE.slowMs;
+    return node.animate(
+      [{ transform: 'translateX(0)' }, { transform: `translateX(${RACE.distance}px)` }],
+      { duration, easing: RACE.easing, fill: 'forwards' }
+    ).finished;
+  });
+
+  return Promise.all(running).then(
+    () => new Promise((resolve) => setTimeout(resolve, RACE.settleMs))
+  );
+}
+
+function renderFeedback(onContinue) {
   const overlay = el('div', 'feedback');
   overlay.hidden = true;
   overlay.setAttribute('role', 'dialog');
@@ -165,7 +195,7 @@ function renderFeedback() {
   close.type = 'button';
   close.addEventListener('click', () => {
     overlay.hidden = true;
-    logEvent('feedback_dismiss', { screen: 'game1' });
+    onContinue();
   });
   card.appendChild(close);
 
@@ -182,7 +212,7 @@ function renderFeedback() {
   };
 }
 
-function renderGame1() {
+function renderGame1({ go }) {
   const screen = el('div', 'screen screen--game');
   screen.appendChild(el('p', 'eyebrow', 'Round 1'));
   screen.appendChild(
@@ -190,8 +220,9 @@ function renderGame1() {
   );
   screen.appendChild(el('p', 'stem', QUERY_STEM));
 
-  const feedback = renderFeedback();
+  const feedback = renderFeedback(() => go('game2', { via: 'continue_button' }));
   const picks = [];
+  const consists = {};
   let answered = false;
   const shownAt = performance.now();
 
@@ -200,11 +231,7 @@ function renderGame1() {
     answered = true;
 
     const correct = id === CORRECT_LANE;
-    picks.forEach((btn) => {
-      btn.disabled = true;
-      if (btn.dataset.lane === id) btn.classList.add('is-picked');
-      if (btn.dataset.lane === CORRECT_LANE) btn.classList.add('is-answer');
-    });
+    picks.forEach((btn) => { btn.disabled = true; });
 
     logEvent('answer', {
       screen: 'game1',
@@ -213,14 +240,23 @@ function renderGame1() {
       response_ms: Math.round(performance.now() - shownAt),
     });
 
-    feedback.show(correct);
+    logEvent('race_start', { screen: 'game1' });
+    runRace(consists).then(() => {
+      picks.forEach((btn) => {
+        if (btn.dataset.lane === id) btn.classList.add('is-picked');
+        if (btn.dataset.lane === CORRECT_LANE) btn.classList.add('is-answer');
+      });
+      logEvent('race_end', { screen: 'game1' });
+      feedback.show(correct);
+    });
   };
 
   const frame = el('div', 'canvas-frame');
   const canvas = el('div', 'canvas');
   ['a', 'b'].forEach((id, i) => {
-    const { lane, pick } = renderLane(id, i === 0 ? 'Train A' : 'Train B', onPick);
+    const { lane, pick, consist } = renderLane(id, i === 0 ? 'Train A' : 'Train B', onPick);
     picks.push(pick);
+    consists[id] = consist;
     canvas.appendChild(lane);
   });
   frame.appendChild(canvas);
@@ -232,11 +268,19 @@ function renderGame1() {
   return screen;
 }
 
+function renderGame2() {
+  const screen = el('div', 'screen');
+  screen.appendChild(el('p', 'eyebrow', 'Round 2'));
+  screen.appendChild(el('h2', 'screen-label', 'Game 2'));
+  return screen;
+}
+
 export const SCREENS = {
   start: { id: 'start', ambient: true,  render: renderStart },
   guide: { id: 'guide', ambient: false, render: renderGuide },
   howto: { id: 'howto', ambient: false, render: renderHowTo },
   game1: { id: 'game1', ambient: false, render: renderGame1 },
+  game2: { id: 'game2', ambient: false, render: renderGame2 },
 };
 
 export const FIRST_SCREEN = 'start';

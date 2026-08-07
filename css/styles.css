@@ -417,8 +417,8 @@ body {
 
 .query {
   position: absolute;
-  left: 12px;
-  bottom: 104px;
+  left: 0;
+  bottom: 38px;
   width: calc(var(--car-count) * 228px + (var(--car-count) - 1) * 3px);
   height: 36px;
   z-index: 2;
