@@ -2,6 +2,7 @@ import { fitCanvas } from './canvas.js';
 import { logEvent } from './logger.js';
 import { makeDraggable } from './drag.js';
 import { renderTipsList } from './tips.js';
+import { setParticipant } from './participant.js';
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -22,7 +23,7 @@ function renderStart({ go }) {
 
   screen.appendChild(el('h1', 'title', 'Welcome to Query Optimization TRAINing'));
   const actions = el('div', 'actions');
-  actions.appendChild(button('Start', 'btn--primary', () => go('intro', { via: 'start_button' })));
+  actions.appendChild(button('Start', 'btn--primary', () => go('idEntry', { via: 'start_button' })));
   screen.appendChild(actions);
 
   return screen;
@@ -41,8 +42,54 @@ const INTRO_PARAGRAPHS = [
 function hintsButton() {
   return button('Hints', 'btn--ghost btn--hints', () => {
     window.open('hints.html', 'qot_hints');
-    logEvent('hints_open', {});
   });
+}
+
+function renderIdEntry({ go }) {
+  const screen = el('div', 'screen screen--intro');
+  screen.appendChild(el('p', 'eyebrow', 'Before you start'));
+  screen.appendChild(el('h2', 'screen-label', 'Enter your participant ID'));
+
+  const body = el('div', 'intro-body');
+  body.appendChild(el('p', 'intro-body__para',
+    'Please enter your participant ID (the number I gave you in the recruitment message).'));
+  screen.appendChild(body);
+
+  const field = el('div', 'idfield');
+  const input = el('input', 'idfield__input');
+  input.type = 'text';
+  input.autocomplete = 'off';
+  input.spellcheck = false;
+  input.placeholder = 'Participant ID';
+  input.setAttribute('aria-label', 'Participant ID');
+  const error = el('p', 'idfield__error', 'Please enter your participant ID to continue.');
+  error.hidden = true;
+  field.appendChild(input);
+  field.appendChild(error);
+  screen.appendChild(field);
+
+  const submit = () => {
+    const value = input.value.trim();
+    if (!value) {
+      error.hidden = false;
+      input.focus();
+      return;
+    }
+    setParticipant(value, 'entered');
+    logEvent('session_start', {});
+    go('intro', { via: 'id_entered' });
+  };
+
+  input.addEventListener('input', () => { error.hidden = true; });
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+
+  const actions = el('div', 'actions');
+  actions.appendChild(button('Continue', 'btn--primary', submit));
+  screen.appendChild(actions);
+
+  requestAnimationFrame(() => input.focus());
+
+  return screen;
 }
 
 function renderIntro({ go }) {
@@ -56,7 +103,7 @@ function renderIntro({ go }) {
 
   const actions = el('div', 'actions');
   actions.appendChild(button('Next', 'btn--primary', () => go('guide', { via: 'next_button' })));
-  actions.appendChild(button('Back', 'btn--back', () => go('start', { via: 'back' })));
+  actions.appendChild(button('Back', 'btn--back', () => go('idEntry', { via: 'back' })));
   screen.appendChild(actions);
 
   return screen;
@@ -357,20 +404,14 @@ function renderRace(config, { go }) {
     const correct = id === config.correct;
     picks.forEach((btn) => { btn.disabled = true; });
 
-    logEvent('answer', {
-      screen: config.id,
-      chose: id,
-      correct,
-      response_ms: Math.round(performance.now() - shownAt),
-    });
+;
 
-    logEvent('race_start', { screen: config.id });
     runRace(consists, config.correct).then(() => {
       picks.forEach((btn) => {
         if (btn.dataset.lane === id) btn.classList.add('is-picked');
         if (btn.dataset.lane === config.correct) btn.classList.add('is-answer');
       });
-      logEvent('race_end', { screen: config.id });
+      logEvent('round_complete', { round: config.id });
       feedback.show(correct ? 'correct' : 'wrong', {
         title: correct ? FEEDBACK.correct : FEEDBACK.wrong,
         body: config.explanation,
@@ -481,7 +522,7 @@ const LOADER_ROUNDS = {
       ],
       [
         { code: 'BETWEEN 100 AND 250' },
-        ' asks the database for one continuous range, which an index can read in a single pass. Two separate conditions make it do more work.',
+        ' gives the database one continuous range, which an index can read in a single pass. However, giving it two separate conditions make the database do more work.',
       ],
     ],
     correctTail: [FUEL_SAVED],
@@ -637,6 +678,7 @@ function renderLoader(config, { go }) {
   screen.appendChild(frame);
 
   const messages = loaderFeedback(config);
+  let retries = 0;
   const feedback = renderFeedback({ label: 'Retry' });
   screen.appendChild(feedback.overlay);
 
@@ -697,13 +739,6 @@ function renderLoader(config, { go }) {
       onEnd: () => {
         node.classList.remove('is-dragging');
         const result = drop(from, token, centreOf(node));
-        logEvent('token_drop', {
-          screen: config.id,
-          token,
-          from: from.type === 'slot' ? `slot ${from.index}` : 'tray',
-          to: result.to,
-          moved: result.moved,
-        });
         requestAnimationFrame(paint);
       },
     });
@@ -809,16 +844,18 @@ function renderLoader(config, { go }) {
       && built.every((t, i) => t === config.answer[i]);
     const state = !loaded ? 'incomplete' : correct ? 'correct' : 'wrong';
 
-    logEvent('run', {
-      screen: config.id,
-      query: built.join(' '),
-      crates: built.length,
-      correct,
-    });
+    if (correct) logEvent('round_complete', { round: config.id });
 
     const action = correct
       ? { label: 'Continue', onContinue: () => go(config.next, { via: 'continue_button' }) }
-      : { label: 'Retry', onContinue: resetDeparture };
+      : {
+          label: 'Retry',
+          onContinue: () => {
+            retries += 1;
+            logEvent('retry', { round: config.id, retry_no: retries });
+            resetDeparture();
+          },
+        };
 
     if (!loaded) {
       feedback.show(state, messages.incomplete, action);
@@ -841,6 +878,8 @@ function renderLoader(config, { go }) {
 const renderLoaderRound = (key) => (ctx) => renderLoader(LOADER_ROUNDS[key], ctx);
 
 function renderFinal() {
+  logEvent('finished', {});
+
   const screen = el('div', 'screen');
   screen.appendChild(el('p', 'eyebrow', 'Complete'));
   screen.appendChild(el('h1', 'title', 'Journey complete'));
@@ -852,6 +891,7 @@ function renderFinal() {
 
 export const SCREENS = {
   start: { id: 'start', ambient: true,  render: renderStart },
+  idEntry: { id: 'idEntry', ambient: false, render: renderIdEntry },
   intro: { id: 'intro', ambient: false, render: renderIntro },
   guide: { id: 'guide', ambient: false, render: renderGuide },
   howto1: { id: 'howto1', ambient: false, render: (ctx) => renderModeIntro(MODE_INTROS.howto1, ctx) },

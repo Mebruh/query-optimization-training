@@ -4,9 +4,10 @@ const buffer = [];
 const listeners = new Set();
 
 let config = {
-  mode: 'console',   // 'console' | 'http'
-  endpoint: null,    // '/api/log/' for Django
-  headers: {},       // { 'X-CSRFToken': token }
+  mode: 'console',
+  url: null,
+  key: null,
+  table: 'events',
 };
 
 export function configureLogger(next) {
@@ -19,36 +20,39 @@ export function onLog(fn) {
 }
 
 export function logEvent(type, payload = {}) {
-  const { id, source } = getParticipant();
+  const { id } = getParticipant();
+
+  if (!id) return null;
 
   const event = {
     participant_id: id,
-    pid_source: source,
     type,
-    ...payload,
-    session_ms: Math.round(performance.now()),
+    detail: payload,
     client_time: new Date().toISOString(),
   };
 
   buffer.push(event);
   listeners.forEach((fn) => fn(event, buffer.length));
 
-  if (config.mode === 'console') {
-    console.log('[log]', event);
-  } else {
-    send(event);
-  }
+  if (config.mode === 'supabase') send(event);
+  else console.log('[log]', event.type, event.participant_id, payload);
 
   return event;
 }
 
 async function send(event) {
-  if (!config.endpoint) return;
+  if (!config.url || !config.key) return;
   try {
-    await fetch(config.endpoint, {
+    await fetch(`${config.url}/rest/v1/${config.table}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...config.headers },
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: config.key,
+        Authorization: `Bearer ${config.key}`,
+        Prefer: 'return=minimal',
+      },
       body: JSON.stringify(event),
+      keepalive: true,
     });
   } catch (err) {
     console.warn('[log] send failed, buffered only', err);
@@ -67,31 +71,24 @@ function columns(rows) {
 
 function escapeCell(value) {
   if (value === null || value === undefined) return '';
-  const str = String(value);
+  const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 
 export function toCSV(rows = buffer) {
   if (!rows.length) return '';
   const cols = columns(rows);
-  const lines = [cols.join(',')];
-  rows.forEach((row) => {
-    lines.push(cols.map((c) => escapeCell(row[c])).join(','));
-  });
-  return lines.join('\n');
+  return [cols.join(','), ...rows.map((r) => cols.map((c) => escapeCell(r[c])).join(','))].join('\n');
 }
 
 export function downloadCSV() {
   const csv = toCSV();
-  if (!csv) {
-    console.warn('[log] nothing to export yet');
-    return;
-  }
+  if (!csv) return;
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `qot_${getParticipant().id}_${Date.now()}.csv`;
+  a.download = `qot_${getParticipant().id ?? 'unknown'}_${Date.now()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }

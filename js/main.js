@@ -11,7 +11,6 @@ const boot = document.getElementById('boot');
 let current = null;
 let enteredAt = null;
 
-
 function mount(id, meta = {}) {
   const def = SCREENS[id];
   if (!def) {
@@ -32,10 +31,9 @@ function mount(id, meta = {}) {
   const begin = () => {
     enteredAt = performance.now();
     node.classList.remove('is-entering');
-    logEvent('screen_enter', { screen: id, ...meta });
+    logEvent('stage', { screen: id });
     updateDev();
   };
-
 
   let started = false;
   const once = () => { if (!started) { started = true; begin(); } };
@@ -45,15 +43,6 @@ function mount(id, meta = {}) {
 
 export function go(id, meta = {}) {
   if (id === current) return;
-
-  if (current && enteredAt != null) {
-    logEvent('screen_exit', {
-      screen: current,
-      to: id,
-      dwell_ms: Math.round(performance.now() - enteredAt),
-      ...meta,
-    });
-  }
 
   const outgoing = stage.firstElementChild;
   if (!outgoing) {
@@ -67,7 +56,6 @@ export function go(id, meta = {}) {
   outgoing.addEventListener('animationend', swap, { once: true });
   setTimeout(swap, 400);
 }
-
 
 const devbar = document.getElementById('devbar');
 const devPid = document.getElementById('devPid');
@@ -90,7 +78,6 @@ function initDev() {
   updateDev();
 }
 
-
 async function init() {
   initDev();
 
@@ -101,27 +88,10 @@ async function init() {
 
   startAmbient(ambient);
 
-  const { id, source } = getParticipant();
-  logEvent('session_start', {
-    pid_source_check: source,
-    screen_w: window.innerWidth,
-    screen_h: window.innerHeight,
-    touch: matchMedia('(pointer: coarse)').matches,
-    reduced_motion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-    user_agent: navigator.userAgent,
-  });
-  console.info(`[qot] participant ${id} (${source}) — Ctrl/Cmd+Shift+D for CSV`);
+  const { id } = getParticipant();
+  console.info(`[qot] participant ${id ?? '(not yet entered)'} — Ctrl/Cmd+Shift+D for CSV`);
 
   mount(FIRST_SCREEN, { via: 'load' });
 }
-
-window.addEventListener('pagehide', () => {
-  if (current && enteredAt != null) {
-    logEvent('session_end', {
-      screen: current,
-      dwell_ms: Math.round(performance.now() - enteredAt),
-    });
-  }
-});
 
 init();
