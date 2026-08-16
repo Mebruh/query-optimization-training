@@ -1,6 +1,7 @@
 import { fitCanvas } from './canvas.js';
 import { logEvent } from './logger.js';
 import { makeDraggable } from './drag.js';
+import { renderTipsList } from './tips.js';
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -19,40 +20,120 @@ function button(label, className, onClick) {
 function renderStart({ go }) {
   const screen = el('div', 'screen');
 
-  screen.appendChild(el('p', 'eyebrow', 'Session 01'));
-  screen.appendChild(el('h1', 'title', 'Query Optimization TRAINing'));
-  screen.appendChild(
-    el('p', 'subtitle', 'Read the plan, spot the cost, pick the faster path. Around ten minutes.')
-  );
-
+  screen.appendChild(el('h1', 'title', 'Welcome to Query Optimization TRAINing'));
   const actions = el('div', 'actions');
-  actions.appendChild(button('Start', 'btn--primary', () => go('guide', { via: 'start_button' })));
+  actions.appendChild(button('Start', 'btn--primary', () => go('intro', { via: 'start_button' })));
   screen.appendChild(actions);
 
   return screen;
 }
 
-function renderGuide({ go }) {
-  const screen = el('div', 'screen');
-  screen.appendChild(el('p', 'eyebrow', 'What this is'));
-  screen.appendChild(el('h2', 'screen-label', 'Guide'));
+const INTRO_PARAGRAPHS = [
+  'Query optimization is the process of determining the most efficient way for a database to execute a query. When you ask a database a question using SQL, there are many different ways it could go about finding the answer. Some of those ways are far more efficient than others, and a lot of that efficiency comes down to how the query is written.',
+  'The aim of this game is to help you understand how to create more efficient queries.',
+  'In this game, single SQL terms are represented by crates/boxes. A whole query, which is comprised of multiple crates, is represented by the cargo that is loaded onto a train.',
+  'Similarly to how a heavier cargo load takes longer to move, burns more fuel, and uses up more resources of a train engine, queries work the same way. An inefficient query takes longer to run, costs more to execute, and uses more CPU cycles, memory, and time than it needs to.',
+  'Your job is to build the most efficient query you can, so your train reaches its destination.',
+  'There are 3 game modes, with 2 rounds in each game mode.',
+  'Press Next to see what makes a query efficient.',
+];
+
+function hintsButton() {
+  return button('Hints', 'btn--ghost btn--hints', () => {
+    window.open('hints.html', 'qot_hints');
+    logEvent('hints_open', {});
+  });
+}
+
+function renderIntro({ go }) {
+  const screen = el('div', 'screen screen--intro');
+  screen.appendChild(el('p', 'eyebrow', 'Introduction'));
+  screen.appendChild(el('h2', 'screen-label', 'What is query optimization?'));
+
+  const body = el('div', 'intro-body');
+  INTRO_PARAGRAPHS.forEach((text) => body.appendChild(el('p', 'intro-body__para', text)));
+  screen.appendChild(body);
 
   const actions = el('div', 'actions');
-  actions.appendChild(button('Next', 'btn--primary', () => go('howto', { via: 'next_button' })));
+  actions.appendChild(button('Next', 'btn--primary', () => go('guide', { via: 'next_button' })));
   actions.appendChild(button('Back', 'btn--back', () => go('start', { via: 'back' })));
   screen.appendChild(actions);
 
   return screen;
 }
 
-function renderHowTo({ go }) {
-  const screen = el('div', 'screen');
-  screen.appendChild(el('p', 'eyebrow', 'Before you begin'));
-  screen.appendChild(el('h2', 'screen-label', 'How to Play'));
+function renderGuide({ go }) {
+  const screen = el('div', 'screen screen--guide');
+  screen.appendChild(el('p', 'eyebrow', 'Guide'));
+  screen.appendChild(el('h2', 'screen-label', 'What makes a query efficient'));
+
+  screen.appendChild(renderTipsList());
 
   const actions = el('div', 'actions');
-  actions.appendChild(button('Start game', 'btn--primary', () => go('game1', { via: 'start_game_button' })));
-  actions.appendChild(button('Back', 'btn--back', () => go('guide', { via: 'back' })));
+  actions.appendChild(button('Next', 'btn--primary', () => go('howto1', { via: 'next_button' })));
+  actions.appendChild(button('Back', 'btn--back', () => go('intro', { via: 'back' })));
+  screen.appendChild(actions);
+
+  return screen;
+}
+
+const MODE_INTROS = {
+  howto1: {
+    id: 'howto1',
+    eyebrow: 'Game mode 1 instructions',
+    title: 'Train Race!',
+    body: [
+      'Welcome to game mode 1.',
+      'In this game mode you have to choose what you think will be the fastest train.',
+      'Remember that a more efficient query means that a train will arrive at the station quicker.',
+      'You can always view the list of query optimization tips by clicking on the Hints button in the next page.',
+    ],
+    start: 'game1a',
+    back: 'guide',
+  },
+  howto2: {
+    id: 'howto2',
+    eyebrow: 'Game mode 2 instructions',
+    title: "Oh no! The train can't make it to the station!",
+    body: [
+      'Welcome to game mode 2.',
+      'The cargo loaded on the train forms a very inefficient query and the train uses too much fuel before it can reach the station.',
+      'In this game mode you have to swap out the inefficient query terms loaded on the train with more optimized ones.',
+      'Remember, you can always view the list of query optimization tips by clicking on the Hints button in the next page.',
+    ],
+    start: 'game2a',
+  },
+  howto3: {
+    id: 'howto3',
+    eyebrow: 'Game mode 3 instructions',
+    title: 'All Aboard!',
+    body: [
+      'Welcome to game mode 3.',
+      'You will see in the next page that the train is empty.',
+      "Your job is to load the train with an efficient query so that it can reach it's destination.",
+      "Similar to the last round, if the query/cargo is too heavy and inefficient then the train will run out of fuel before it reaches it's destination.",
+      'Remember, you can always view the list of query optimization tips by clicking on the Hints button in the next page.',
+    ],
+    start: 'game3a',
+  },
+};
+
+function renderModeIntro(config, { go }) {
+  const screen = el('div', 'screen screen--intro');
+  screen.appendChild(el('p', 'eyebrow', config.eyebrow));
+  screen.appendChild(el('h2', 'screen-label', config.title));
+
+  const body = el('div', 'intro-body');
+  config.body.forEach((text) => body.appendChild(el('p', 'intro-body__para', text)));
+  screen.appendChild(body);
+
+  const actions = el('div', 'actions');
+  actions.appendChild(
+    button('Start game', 'btn--primary', () => go(config.start, { via: 'start_game_button' }))
+  );
+  if (config.back) {
+    actions.appendChild(button('Back', 'btn--back', () => go(config.back, { via: 'back' })));
+  }
   screen.appendChild(actions);
 
   return screen;
@@ -61,17 +142,7 @@ function renderHowTo({ go }) {
 const CARS_PER_TRAIN = 2;
 const CRATES_PER_CAR = 3;
 
-const QUERY_STEM = 'SELECT * FROM products ...';
-
-const COMPLETIONS = {
-  a: 'WHERE order_date >= "2020-01-01"',
-  b: 'WHERE YEAR(order_date) >= "2020"',
-};
-
-const CORRECT_LANE = 'a';
-
 const RACE = {
-  distance: 636,
   fastMs: 2600,
   slowMs: 4100,
   settleMs: 500,
@@ -83,21 +154,53 @@ const FEEDBACK = {
   wrong: 'Unfortunately, that is not right.',
 };
 
-const EXPLANATION = [
-  ['Train A is the more optimized query.'],
-  [
-    'Train A compares ', { code: 'order_date' },
-    ' directly, so the database can use an index on that column and jump straight to the matching rows.',
-  ],
-  [
-    'Train B wraps the column in ', { code: 'YEAR()' },
-    '. That function has to be evaluated for every row before the condition can be tested, so the index cannot be used and the database falls back to scanning the entire table.',
-  ],
-  [
-    'A condition an index can work with is called ', { code: 'sargable' },
-    '. Keep the column bare on one side of the comparison.',
-  ],
-];
+const RACE_ROUNDS = {
+  game1a: {
+    id: 'game1a',
+    eyebrow: 'Round 1',
+    prompt: 'Which of these two queries will run faster?',
+    trains: {
+      a: "SELECT order_no FROM orders WHERE status = 'shipped'",
+      b: "SELECT * FROM orders WHERE status = 'shipped'",
+    },
+    correct: 'a',
+    next: 'game1b',
+    explanation: [
+      [
+        'Both queries filter the same rows. The difference is how much of each row they return. Train A asks for just the ',
+        { code: 'order_no' }, ' column, while Train B uses ', { code: 'SELECT *' },
+        ' and hauls every column in the table.',
+      ],
+      [
+        'The database has to read, hold in memory, and transfer all of that extra data even though none of it is used. That\'s why train B is slower.',
+      ],
+      ['Remember to only return the columns you need rather than selecting everything.'],
+    ],
+  },
+  game1b: {
+    id: 'game1b',
+    eyebrow: 'Round 2',
+    prompt: 'Which of these two queries will run faster?',
+    stem: 'SELECT order_no FROM orders ...',
+    trains: {
+      a: "WHERE order_date >= '2026-01-01'",
+      b: 'WHERE YEAR(order_date) >= 2026',
+    },
+    correct: 'a',
+    next: 'howto2',
+    explanation: [
+      ['Both queries return the same orders and both of them carry the same column. However, the difference is the filter.'],
+      [
+        'Train A compares ', { code: 'order_date' },
+        ' directly, so an index on that column can be used to jump straight to the matching rows.',
+      ],
+      [
+        'Train B wraps the column in ', { code: 'YEAR()' },
+        '. That function has to be worked out for every row in the table before the condition can be tested, so the index cannot be used and the database falls back to scanning everything.',
+      ],
+    ],
+  },
+};
 
 function sprite(className, src, { alt = '', optional = false } = {}) {
   const img = new Image();
@@ -132,42 +235,56 @@ function para(className, parts) {
   return node;
 }
 
-function renderLane(id, label, onPick) {
+function renderLane(id, label, text, cars, onPick) {
   const lane = el('div', 'lane');
   lane.dataset.lane = id;
 
-  lane.style.setProperty('--car-count', CARS_PER_TRAIN);
+  lane.style.setProperty('--car-count', cars);
 
-  const pick = el('button', 'lane__pick', label);
+  const plateWidth = cars * 228 + (cars - 1) * 3;
+  const fitted = Math.min(19, Math.floor((plateWidth - 16) / (text.length * 0.6)));
+  lane.style.setProperty('--query-size', `${fitted}px`);
+
+  const pick = el('button', 'lane__pick', `Click here for ${label}`);
   pick.type = 'button';
   pick.dataset.lane = id;
-  pick.setAttribute('aria-label', `Choose ${label}: ${COMPLETIONS[id]}`);
+  pick.setAttribute('aria-label', `Choose ${label}: ${text}`);
   pick.addEventListener('click', () => onPick(id));
   lane.appendChild(pick);
   lane.appendChild(sprite('shed', 'assets/images/ElectricalShed.png', { optional: true }));
 
   const consist = el('div', 'consist');
-  for (let i = 0; i < CARS_PER_TRAIN; i++) consist.appendChild(renderCar());
+  for (let i = 0; i < cars; i++) consist.appendChild(renderCar());
   consist.appendChild(sprite('loco', 'assets/images/Train.png'));
-  consist.appendChild(el('p', 'query', COMPLETIONS[id]));
+  consist.appendChild(el('p', 'query', text));
   lane.appendChild(consist);
 
   return { lane, pick, consist };
 }
 
-function runRace(consists) {
+function raceDistance(consist) {
+
+  const lane = consist.parentElement;
+  const shed = lane.querySelector('.shed');
+  const front = consist.offsetLeft + consist.offsetWidth;
+  const target = shed ? shed.offsetLeft : lane.offsetWidth - 80;
+  return Math.max(120, target - front - 16);
+}
+
+function runRace(consists, correctLane) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduced) {
     Object.values(consists).forEach((node) => {
-      node.style.transform = `translateX(${RACE.distance}px)`;
+      node.style.transform = `translateX(${raceDistance(node)}px)`;
     });
     return Promise.resolve();
   }
 
   const running = Object.entries(consists).map(([id, node]) => {
-    const duration = id === CORRECT_LANE ? RACE.fastMs : RACE.slowMs;
+    const duration = id === correctLane ? RACE.fastMs : RACE.slowMs;
+    const distance = raceDistance(node);
     return node.animate(
-      [{ transform: 'translateX(0)' }, { transform: `translateX(${RACE.distance}px)` }],
+      [{ transform: 'translateX(0)' }, { transform: `translateX(${distance}px)` }],
       { duration, easing: RACE.easing, fill: 'forwards' }
     ).finished;
   });
@@ -205,12 +322,10 @@ function renderFeedback({ onContinue, label = 'Continue' } = {}) {
       close.textContent = action?.label ?? label;
       handler = action?.onContinue ?? onContinue;
 
-      title.textContent = content
-        ? content.title
-        : result === 'correct' ? FEEDBACK.correct : FEEDBACK.wrong;
+      title.textContent = content.title;
 
       text.replaceChildren();
-      (content ? content.body : EXPLANATION).forEach((parts, i) => {
+      content.body.forEach((parts, i) => {
         text.appendChild(para(i === 0 ? 'feedback__lead' : 'feedback__body', parts));
       });
 
@@ -221,15 +336,15 @@ function renderFeedback({ onContinue, label = 'Continue' } = {}) {
   };
 }
 
-function renderGame1({ go }) {
+function renderRace(config, { go }) {
   const screen = el('div', 'screen screen--game');
-  screen.appendChild(el('p', 'eyebrow', 'Round 1'));
-  screen.appendChild(
-    el('h2', 'screen-label', 'Choose the most optimized clause for the following query')
-  );
-  screen.appendChild(el('p', 'stem', QUERY_STEM));
+  screen.appendChild(el('p', 'eyebrow', config.eyebrow));
+  screen.appendChild(el('h2', 'screen-label', config.prompt));
+  if (config.stem) screen.appendChild(el('p', 'stem', config.stem));
 
-  const feedback = renderFeedback({ onContinue: () => go('game2', { via: 'continue_button' }) });
+  const feedback = renderFeedback({
+    onContinue: () => go(config.next, { via: 'continue_button' }),
+  });
   const picks = [];
   const consists = {};
   let answered = false;
@@ -239,37 +354,49 @@ function renderGame1({ go }) {
     if (answered) return;
     answered = true;
 
-    const correct = id === CORRECT_LANE;
+    const correct = id === config.correct;
     picks.forEach((btn) => { btn.disabled = true; });
 
     logEvent('answer', {
-      screen: 'game1',
+      screen: config.id,
       chose: id,
       correct,
       response_ms: Math.round(performance.now() - shownAt),
     });
 
-    logEvent('race_start', { screen: 'game1' });
-    runRace(consists).then(() => {
+    logEvent('race_start', { screen: config.id });
+    runRace(consists, config.correct).then(() => {
       picks.forEach((btn) => {
         if (btn.dataset.lane === id) btn.classList.add('is-picked');
-        if (btn.dataset.lane === CORRECT_LANE) btn.classList.add('is-answer');
+        if (btn.dataset.lane === config.correct) btn.classList.add('is-answer');
       });
-      logEvent('race_end', { screen: 'game1' });
-      feedback.show(correct ? 'correct' : 'wrong');
+      logEvent('race_end', { screen: config.id });
+      feedback.show(correct ? 'correct' : 'wrong', {
+        title: correct ? FEEDBACK.correct : FEEDBACK.wrong,
+        body: config.explanation,
+      });
     });
   };
+
+  const longest = Math.max(...Object.values(config.trains).map((t) => t.length));
+  const cars = Math.min(3, Math.max(2, Math.ceil(longest / 26)));
 
   const frame = el('div', 'canvas-frame');
   const canvas = el('div', 'canvas');
   ['a', 'b'].forEach((id, i) => {
-    const { lane, pick, consist } = renderLane(id, i === 0 ? 'Train A' : 'Train B', onPick);
+    const { lane, pick, consist } = renderLane(
+      id, i === 0 ? 'Train A' : 'Train B', config.trains[id], cars, onPick
+    );
     picks.push(pick);
     consists[id] = consist;
     canvas.appendChild(lane);
   });
   frame.appendChild(canvas);
   screen.appendChild(frame);
+
+  const actions = el('div', 'actions actions--run');
+  actions.appendChild(hintsButton());
+  screen.appendChild(actions);
   screen.appendChild(feedback.overlay);
 
   requestAnimationFrame(() => fitCanvas(canvas));
@@ -277,70 +404,173 @@ function renderGame1({ go }) {
   return screen;
 }
 
-const GAME2 = {
-  prompt: 'Swap out the heavy crates to make a better optimized query and save fuel',
-  scene: { width: 1440, height: 470 },
-  cars: 4,
-  deck: ['SELECT', '*', 'FROM', 'orders', 'WHERE', 'YEAR(order_date)', '>', '"2020"'],
-  tray: ['order_date', '"2020-01-01"', 'order_no'],
-  answer: ['SELECT', 'order_no', 'FROM', 'orders', 'WHERE', 'order_date', '>', '"2020-01-01"'],
-};
-
-const RUN2 = {
+const LOADER = {
   scrollPx: 2960,
   scrollMs: 2800,
   approachPx: 172,
   approachMs: 1100,
   overlapMs: 650,
+  stallPx: 780,
+  stallMs: 2200,
   settleMs: 400,
   fuelCorrect: 0.62,
-  fuelWrong: 0.08,
+  fuelEmpty: 0.02,
   scrollEasing: 'cubic-bezier(0.35, 0, 0.35, 1)',
   approachEasing: 'cubic-bezier(0.3, 0, 0.4, 1)',
+  stallEasing: 'cubic-bezier(0.2, 0, 0.1, 1)',
+  slotPx: 104,
 };
 
-const OPTIMAL = 'SELECT order_no FROM orders WHERE order_date > "2020-01-01"';
+const SPARE = ['Any crates you do not need can be left in the tray below.'];
 
-const GAME2_FEEDBACK = {
-  incomplete: {
-    title: 'The train is not loaded.',
-    body: [
-      ['Every slot needs a crate before the train can run.'],
+const FUEL_SAVED = 'Less work for the database means the query is more efficient which means less fuel is used for the train.';
+const FUEL_BURNED = "That's why your train burned so much fuel.";
+const REACHED = 'Your train had the fuel to reach the station.';
+const STALLED = 'Your train ran out of fuel and stopped before it reached the station.';
+
+const LOADER_ROUNDS = {
+  game2a: {
+    id: 'game2a',
+    eyebrow: 'Round 1',
+    prompt: 'Swap out the heavy crates to make a better optimized query and save fuel',
+    goal: 'Return the order number of every order placed after 2026-01-01',
+    slots: 10,
+    deck: ['SELECT', '*', 'FROM', 'orders', 'WHERE', 'YEAR(order_date)', '>', '"2026"', 'ORDER BY total', null],
+    tray: ['order_no', 'order_date', '"2026-01-01"'],
+    answer: ['SELECT', 'order_no', 'FROM', 'orders', 'WHERE', 'order_date', '>', '"2026-01-01"'],
+    fuel: true,
+    next: 'game2b',
+    why: [
+      [
+        'Selecting only ', { code: 'order_no' },
+        ' means the database reads one column instead of every column in the table, so there is a lot less data to return.',
+      ],
+      [
+        'Comparing ', { code: 'order_date' },
+        ' directly lets an index on that column jump straight to the matching rows, instead of computing ',
+        { code: 'YEAR()' }, ' for every row and scanning the whole table.',
+      ],
+      [
+        "The results don't need to be ordered, so ", { code: 'ORDER BY total' },
+        " just makes the database sort a result set that doesn't need to be sorted. Leaving that crate behind stops the query from performing unnecessary actions.",
+      ],
     ],
+    correctTail: [FUEL_SAVED],
+    wrongTail: [FUEL_BURNED],
   },
-  wrong: {
-    title: 'Unfortunately, that is not right.',
-    body: [
-      ['The optimized query is ', { code: OPTIMAL }, '.'],
+  game2b: {
+    id: 'game2b',
+    eyebrow: 'Round 2',
+    prompt: 'Swap out the heavy crates to make a better optimized query and save fuel',
+    goal: 'Return every order number from 100 to 250',
+    slots: 12,
+    deck: ['SELECT', '*', 'FROM', 'orders', 'WHERE', 'order_no + 100', '>=', '200', 'AND', 'order_no', '<=', '250'],
+    tray: ['order_no', 'BETWEEN', '100'],
+    answer: ['SELECT', 'order_no', 'FROM', 'orders', 'WHERE', 'order_no', 'BETWEEN', '100', 'AND', '250'],
+    fuel: true,
+    next: 'howto3',
+    why: [
+      [
+        'Selecting only ', { code: 'order_no' }, ' instead of ', { code: '*' },
+        ' means the database carries back one column rather than every column in the table.',
+      ],
+      [
+        { code: 'order_no + 100' },
+        ' has to be recalculated for every single row before the filter can be tested, so the index on that column goes unused. Doing the math on the other side turns it into a comparison against ',
+        { code: '100' }, ' that an index can work with.',
+      ],
+      [
+        { code: 'BETWEEN 100 AND 250' },
+        ' asks the database for one continuous range, which an index can read in a single pass. Two separate conditions make it do more work.',
+      ],
+    ],
+    correctTail: [FUEL_SAVED],
+    wrongTail: [FUEL_BURNED],
+  },
+  game3a: {
+    id: 'game3a',
+    eyebrow: 'Round 1',
+    prompt: 'Load the empty train with the most optimized query',
+    goal: 'Return the order number of every order placed after 2026-01-01',
+    slots: 10,
+    deck: null,
+    tray: ['SELECT', '*', 'FROM', 'orders', 'WHERE', 'YEAR(order_date)', '>', '"2026"', 'order_date', '"2026-01-01"', 'order_no'],
+    answer: ['SELECT', 'order_no', 'FROM', 'orders', 'WHERE', 'order_date', '>', '"2026-01-01"'],
+    fuel: true,
+    next: 'game3b',
+    why: [
       [
         'Selecting only ', { code: 'order_no' },
         ' means the database reads one column instead of every column in the table, so there is far less data to move.',
       ],
       [
         'Comparing ', { code: 'order_date' },
-        ' directly lets an index on that column do the work. Wrapping it in ', { code: 'YEAR()' },
-        ' forces the database to compute that function for every row, so it has to scan the whole table.',
+        ' directly lets an index on that column jump straight to the matching rows, instead of computing ',
+        { code: 'YEAR()' }, ' for every row and scanning the whole table.',
       ],
-      ['That is why your train burned so much fuel.'],
     ],
+    correctTail: [REACHED],
+    wrongTail: [STALLED],
   },
-  correct: {
-    title: 'Congratulations!',
-    body: [
-      ['The train is carrying ', { code: OPTIMAL }, '.'],
+  game3b: {
+    id: 'game3b',
+    eyebrow: 'Round 2',
+    prompt: 'Load the empty train with the most optimized query',
+    goal: 'Return the order number of the 100 highest-value orders placed in the East region',
+    slots: 12,
+    deck: null,
+    tray: ['SELECT', '*', 'order_no', 'FROM', 'orders', 'WHERE', 'HAVING', 'region', '=', "'East'", 'ORDER BY total DESC', 'LIMIT 100'],
+    answer: ['SELECT', 'order_no', 'FROM', 'orders', 'WHERE', 'region', '=', "'East'", 'ORDER BY total DESC', 'LIMIT 100'],
+    fuel: true,
+    next: 'final',
+    why: [
       [
         'Selecting only ', { code: 'order_no' },
-        ' means the database reads one column instead of every column in the table, so there is far less data to move.',
+        ' means the database carries back one column instead of every column in the table.',
       ],
       [
-        'Comparing ', { code: 'order_date' },
-        ' directly lets an index on that column do the work, instead of computing ', { code: 'YEAR()' },
-        ' for every row and scanning the whole table.',
+        { code: 'WHERE' },
+        ' filters rows before any grouping or sorting happens, so the database throws away everything outside the East region early. ',
+        { code: 'HAVING' },
+        " is for filtering on already grouped results and without a GROUP BY the query wouldn't even run.",
       ],
-      ['Less work for the database means the query is more efficient which means less fuel is used for the train.'],
+      [
+        "Since you don't know which orders are the highest value without putting them in order first, ",
+        { code: 'ORDER BY' }, ' is useful and needed in this case. And because ', { code: 'LIMIT 100' },
+        ' caps the result at a hundred rows, the database stops carrying data back as soon as it has enough.',
+      ],
     ],
+    correctTail: [REACHED],
+    wrongTail: [STALLED],
   },
 };
+
+function loaderFeedback(config) {
+  const built = (deck) => deck.filter(Boolean).join(' ');
+  return {
+    incomplete: {
+      title: 'The train is empty.',
+      body: [['Load some crates onto the train before it can run.']],
+    },
+    wrong: (deck) => ({
+      title: 'Unfortunately, that is not right.',
+      body: [
+        ['Your train was carrying ', { code: built(deck) }, '.'],
+        ['The optimized query is ', { code: config.answer.join(' ') }, '.'],
+        ...config.why,
+        ...config.wrongTail.map((t) => [t]),
+      ],
+    }),
+    correct: () => ({
+      title: 'Congratulations!',
+      body: [
+        ['The train is carrying ', { code: config.answer.join(' ') }, '.'],
+        ...config.why,
+        ...config.correctTail.map((t) => [t]),
+      ],
+    }),
+  };
+}
 
 function renderBareCar() {
   const car = el('div', 'car');
@@ -348,13 +578,23 @@ function renderBareCar() {
   return car;
 }
 
-function renderGame2({ go }) {
+function renderLoader(config, { go }) {
   const screen = el('div', 'screen screen--game');
-  screen.appendChild(el('p', 'eyebrow', 'Round 2'));
-  screen.appendChild(el('h2', 'screen-label', GAME2.prompt));
+  screen.appendChild(el('p', 'eyebrow', config.eyebrow));
+  screen.appendChild(el('h2', 'screen-label', config.prompt));
+  if (config.goal) screen.appendChild(el('p', 'stem', config.goal));
 
-  const deck = [...GAME2.deck];
-  const tray = [...GAME2.tray];
+  const slotCount = config.slots ?? config.answer.length;
+  const deck = new Array(slotCount).fill(null);
+  if (config.deck) config.deck.forEach((t, i) => { deck[i] = t ?? null; });
+  const tray = [...config.tray];
+
+  const deckPx = slotCount * LOADER.slotPx;
+  const design = {
+    width: Math.max(1440, 12 + deckPx + 244 + 320),
+    height: 470,
+  };
+  const carCount = Math.max(2, Math.ceil(deckPx / 231));
 
   const frame = el('div', 'canvas-frame');
   const canvas = el('div', 'canvas canvas--yard');
@@ -362,7 +602,7 @@ function renderGame2({ go }) {
   const lane = el('div', 'lane');
   lane.appendChild(sprite('shed', 'assets/images/ElectricalShed.png', { optional: true }));
   const consist = el('div', 'consist');
-  for (let i = 0; i < GAME2.cars; i++) consist.appendChild(renderBareCar());
+  for (let i = 0; i < carCount; i++) consist.appendChild(renderBareCar());
   consist.appendChild(sprite('loco', 'assets/images/Train.png'));
   lane.appendChild(consist);
   canvas.appendChild(lane);
@@ -376,13 +616,16 @@ function renderGame2({ go }) {
   });
   canvas.appendChild(slotRow);
 
-  const fuel = el('div', 'fuel');
-  fuel.appendChild(el('p', 'fuel__label', 'Fuel'));
-  const fuelTrack = el('div', 'fuel__track');
-  const fuelLevel = el('div', 'fuel__level');
-  fuelTrack.appendChild(fuelLevel);
-  fuel.appendChild(fuelTrack);
-  canvas.appendChild(fuel);
+  let fuelLevel = null;
+  if (config.fuel) {
+    const fuel = el('div', 'fuel');
+    fuel.appendChild(el('p', 'fuel__label', 'Fuel'));
+    const track = el('div', 'fuel__track');
+    fuelLevel = el('div', 'fuel__level');
+    track.appendChild(fuelLevel);
+    fuel.appendChild(track);
+    canvas.appendChild(fuel);
+  }
 
   const trayBox = el('div', 'tray');
   trayBox.appendChild(el('p', 'tray__label', 'SQL terms to choose from'));
@@ -393,6 +636,7 @@ function renderGame2({ go }) {
   frame.appendChild(canvas);
   screen.appendChild(frame);
 
+  const messages = loaderFeedback(config);
   const feedback = renderFeedback({ label: 'Retry' });
   screen.appendChild(feedback.overlay);
 
@@ -400,6 +644,7 @@ function renderGame2({ go }) {
   const run = el('button', 'btn btn--primary', 'Run query and start train');
   run.type = 'button';
   runRow.appendChild(run);
+  runRow.appendChild(hintsButton());
   screen.appendChild(runRow);
 
   const centreOf = (node) => {
@@ -453,7 +698,7 @@ function renderGame2({ go }) {
         node.classList.remove('is-dragging');
         const result = drop(from, token, centreOf(node));
         logEvent('token_drop', {
-          screen: 'game2',
+          screen: config.id,
           token,
           from: from.type === 'slot' ? `slot ${from.index}` : 'tray',
           to: result.to,
@@ -473,56 +718,83 @@ function renderGame2({ go }) {
       if (token) slot.appendChild(makeToken(token, { type: 'slot', index: i }));
     });
     trayRow.replaceChildren();
-    tray.forEach((token, i) => {
-      trayRow.appendChild(makeToken(token, { type: 'tray', index: i }));
-    });
+    tray.forEach((token, i) => trayRow.appendChild(makeToken(token, { type: 'tray', index: i })));
   }
 
   function departure(correct) {
-    const target = correct ? RUN2.fuelCorrect : RUN2.fuelWrong;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stalls = !correct;
 
     if (reduced) {
-      fuelLevel.style.transform = `scaleX(${target})`;
-      [consist, slotRow].forEach((node) => {
-        node.style.transform = `translateX(${RUN2.approachPx}px)`;
-      });
+      if (fuelLevel) {
+        const level = correct ? LOADER.fuelCorrect : LOADER.fuelEmpty;
+        fuelLevel.style.transform = `scaleX(${level})`;
+      }
+      if (!stalls) {
+        [consist, slotRow].forEach((node) => {
+          node.style.transform = `translateX(${LOADER.approachPx}px)`;
+        });
+      }
       return Promise.resolve();
     }
 
-    const startsAt = Math.max(0, RUN2.scrollMs - RUN2.overlapMs);
-    const totalMs = startsAt + RUN2.approachMs;
+    if (stalls) {
+      const stallPx = LOADER.stallPx;
+      const stallMs = LOADER.stallMs;
 
-    fuelLevel.animate(
-      [{ transform: 'scaleX(1)' }, { transform: `scaleX(${target})` }],
-      { duration: totalMs, easing: 'linear', fill: 'forwards' }
-    );
+      if (fuelLevel) {
+        fuelLevel.animate(
+          [{ transform: 'scaleX(1)' }, { transform: `scaleX(${LOADER.fuelEmpty})` }],
+          { duration: stallMs, easing: 'linear', fill: 'forwards' }
+        );
+      }
+
+      const stall = lane.animate(
+        [{ backgroundPositionX: '0px' }, { backgroundPositionX: `${-stallPx}px` }],
+        { duration: stallMs, easing: LOADER.stallEasing, fill: 'forwards' }
+      );
+      return stall.finished.then(
+        () => new Promise((resolve) => setTimeout(resolve, LOADER.settleMs))
+      );
+    }
+
+    const startsAt = Math.max(0, LOADER.scrollMs - LOADER.overlapMs);
+
+    if (fuelLevel) {
+      fuelLevel.animate(
+        [{ transform: 'scaleX(1)' }, { transform: `scaleX(${LOADER.fuelCorrect})` }],
+        { duration: startsAt + LOADER.approachMs, easing: 'linear', fill: 'forwards' }
+      );
+    }
 
     const scroll = lane.animate(
-      [{ backgroundPositionX: '0px' }, { backgroundPositionX: `${-RUN2.scrollPx}px` }],
-      { duration: RUN2.scrollMs, easing: RUN2.scrollEasing, fill: 'forwards' }
+      [{ backgroundPositionX: '0px' }, { backgroundPositionX: `${-LOADER.scrollPx}px` }],
+      { duration: LOADER.scrollMs, easing: LOADER.scrollEasing, fill: 'forwards' }
     );
 
     const approach = new Promise((resolve) => {
       setTimeout(() => {
         const travel = [{ transform: 'translateX(0)' },
-                        { transform: `translateX(${RUN2.approachPx}px)` }];
-        const opts = { duration: RUN2.approachMs, easing: RUN2.approachEasing, fill: 'forwards' };
+                        { transform: `translateX(${LOADER.approachPx}px)` }];
+        const opts = { duration: LOADER.approachMs, easing: LOADER.approachEasing, fill: 'forwards' };
         resolve(Promise.all([consist, slotRow].map((node) => node.animate(travel, opts).finished)));
       }, startsAt);
     });
 
     return Promise.all([scroll.finished, approach])
-      .then(() => new Promise((resolve) => setTimeout(resolve, RUN2.settleMs)));
+      .then(() => new Promise((resolve) => setTimeout(resolve, LOADER.settleMs)));
   }
 
   function resetDeparture() {
-    [consist, slotRow, fuelLevel, lane].forEach((node) => {
+    [consist, slotRow, lane].forEach((node) => {
       node.getAnimations().forEach((a) => a.cancel());
       node.style.transform = '';
     });
-    fuelLevel.style.transform = 'scaleX(1)';
     lane.style.backgroundPositionX = '';
+    if (fuelLevel) {
+      fuelLevel.getAnimations().forEach((a) => a.cancel());
+      fuelLevel.style.transform = 'scaleX(1)';
+    }
     canvas.classList.remove('is-locked');
     run.disabled = false;
   }
@@ -530,51 +802,68 @@ function renderGame2({ go }) {
   run.addEventListener('click', () => {
     if (run.disabled) return;
 
-    const complete = deck.every(Boolean);
-    const correct = complete && deck.every((t, i) => t === GAME2.answer[i]);
-    const state = !complete ? 'incomplete' : correct ? 'correct' : 'wrong';
+    const built = deck.filter(Boolean);
+    const loaded = built.length > 0;
+    const correct = loaded
+      && built.length === config.answer.length
+      && built.every((t, i) => t === config.answer[i]);
+    const state = !loaded ? 'incomplete' : correct ? 'correct' : 'wrong';
 
     logEvent('run', {
-      screen: 'game2',
-      query: deck.map((t) => t ?? '_').join(' '),
-      complete,
+      screen: config.id,
+      query: built.join(' '),
+      crates: built.length,
       correct,
     });
 
     const action = correct
-      ? { label: 'Continue', onContinue: () => go('game3', { via: 'continue_button' }) }
+      ? { label: 'Continue', onContinue: () => go(config.next, { via: 'continue_button' }) }
       : { label: 'Retry', onContinue: resetDeparture };
 
-    if (!complete) {
-      feedback.show(state, GAME2_FEEDBACK[state], action);
+    if (!loaded) {
+      feedback.show(state, messages.incomplete, action);
       return;
     }
 
+    const content = correct ? messages.correct() : messages.wrong(deck);
+
     canvas.classList.add('is-locked');
     run.disabled = true;
-    departure(correct).then(() => feedback.show(state, GAME2_FEEDBACK[state], action));
+    departure(correct).then(() => feedback.show(state, content, action));
   });
 
   paint();
-  requestAnimationFrame(() => fitCanvas(canvas, GAME2.scene));
+  requestAnimationFrame(() => fitCanvas(canvas, design));
 
   return screen;
 }
 
-function renderGame3() {
+const renderLoaderRound = (key) => (ctx) => renderLoader(LOADER_ROUNDS[key], ctx);
+
+function renderFinal() {
   const screen = el('div', 'screen');
-  screen.appendChild(el('p', 'eyebrow', 'Round 3'));
-  screen.appendChild(el('h2', 'screen-label', 'Game 3'));
+  screen.appendChild(el('p', 'eyebrow', 'Complete'));
+  screen.appendChild(el('h1', 'title', 'Journey complete'));
+  screen.appendChild(
+    el('p', 'subtitle', 'Thank you for playing the game. Please return to the survey now.')
+  );
   return screen;
 }
 
 export const SCREENS = {
   start: { id: 'start', ambient: true,  render: renderStart },
+  intro: { id: 'intro', ambient: false, render: renderIntro },
   guide: { id: 'guide', ambient: false, render: renderGuide },
-  howto: { id: 'howto', ambient: false, render: renderHowTo },
-  game1: { id: 'game1', ambient: false, render: renderGame1 },
-  game2: { id: 'game2', ambient: false, render: renderGame2 },
-  game3: { id: 'game3', ambient: false, render: renderGame3 },
+  howto1: { id: 'howto1', ambient: false, render: (ctx) => renderModeIntro(MODE_INTROS.howto1, ctx) },
+  howto2: { id: 'howto2', ambient: false, render: (ctx) => renderModeIntro(MODE_INTROS.howto2, ctx) },
+  howto3: { id: 'howto3', ambient: false, render: (ctx) => renderModeIntro(MODE_INTROS.howto3, ctx) },
+  game1a: { id: 'game1a', ambient: false, render: (ctx) => renderRace(RACE_ROUNDS.game1a, ctx) },
+  game1b: { id: 'game1b', ambient: false, render: (ctx) => renderRace(RACE_ROUNDS.game1b, ctx) },
+  game2a: { id: 'game2a', ambient: false, render: renderLoaderRound('game2a') },
+  game2b: { id: 'game2b', ambient: false, render: renderLoaderRound('game2b') },
+  game3a: { id: 'game3a', ambient: false, render: renderLoaderRound('game3a') },
+  game3b: { id: 'game3b', ambient: false, render: renderLoaderRound('game3b') },
+  final: { id: 'final', ambient: true,  render: renderFinal },
 };
 
 export const FIRST_SCREEN = 'start';

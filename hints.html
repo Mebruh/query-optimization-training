@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Query optimization tips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="hints-page">
+  <main class="stage">
+    <div class="screen screen--guide">
+      <p class="eyebrow">Hints</p>
+      <h2 class="screen-label">What makes a query efficient</h2>
+      <div id="tips"></div>
+    </div>
+  </main>
+  <script type="module">
+    import { renderTipsList } from './js/tips.js';
+    document.getElementById('tips').replaceWith(renderTipsList());
+  </script>
+</body>
+</html>
