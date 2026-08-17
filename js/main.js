@@ -1,8 +1,10 @@
 import { SCREENS, FIRST_SCREEN } from './screens.js';
 import { logEvent, onLog, downloadCSV } from './logger.js';
+import { configureLogger } from './logger.js';
 import { getParticipant } from './participant.js';
 import { preloadImages, waitForFonts } from './preload.js';
 import { startAmbient } from './ambient.js';
+import { SUPABASE } from './config.js';
 
 const stage = document.getElementById('stage');
 const ambient = document.getElementById('ambient');
@@ -79,6 +81,8 @@ function initDev() {
 }
 
 async function init() {
+  configureLogger(SUPABASE);
+
   initDev();
 
   await Promise.all([preloadImages(), waitForFonts()]);

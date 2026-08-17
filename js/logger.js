@@ -28,7 +28,6 @@ export function logEvent(type, payload = {}) {
     participant_id: id,
     type,
     detail: payload,
-    client_time: new Date().toISOString(),
   };
 
   buffer.push(event);
@@ -47,8 +46,8 @@ async function send(event) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+
         apikey: config.key,
-        Authorization: `Bearer ${config.key}`,
         Prefer: 'return=minimal',
       },
       body: JSON.stringify(event),

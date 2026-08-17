@@ -76,7 +76,6 @@ function renderIdEntry({ go }) {
       return;
     }
     setParticipant(value, 'entered');
-    logEvent('session_start', {});
     go('intro', { via: 'id_entered' });
   };
 
@@ -411,7 +410,7 @@ function renderRace(config, { go }) {
         if (btn.dataset.lane === id) btn.classList.add('is-picked');
         if (btn.dataset.lane === config.correct) btn.classList.add('is-answer');
       });
-      logEvent('round_complete', { round: config.id });
+      logEvent('round_complete', { round: config.id, correct });
       feedback.show(correct ? 'correct' : 'wrong', {
         title: correct ? FEEDBACK.correct : FEEDBACK.wrong,
         body: config.explanation,
