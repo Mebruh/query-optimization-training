@@ -465,7 +465,7 @@ const SPARE = ['Any crates you do not need can be left in the tray below.'];
 
 const FUEL_SAVED = 'Less work for the database means the query is more efficient which means less fuel is used for the train.';
 const FUEL_BURNED = "That's why your train burned so much fuel.";
-const REACHED = 'Your train had the fuel to reach the station.';
+const REACHED = 'Your train had enough fuel to reach the station.';
 const STALLED = 'Your train ran out of fuel and stopped before it reached the station.';
 
 const LOADER_ROUNDS = {
