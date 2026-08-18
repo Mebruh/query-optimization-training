@@ -47,7 +47,6 @@ function hintsButton() {
 
 function renderIdEntry({ go }) {
   const screen = el('div', 'screen screen--intro');
-  screen.appendChild(el('p', 'eyebrow', 'Before you start'));
   screen.appendChild(el('h2', 'screen-label', 'Enter your participant ID'));
 
   const body = el('div', 'intro-body');
@@ -93,7 +92,6 @@ function renderIdEntry({ go }) {
 
 function renderIntro({ go }) {
   const screen = el('div', 'screen screen--intro');
-  screen.appendChild(el('p', 'eyebrow', 'Introduction'));
   screen.appendChild(el('h2', 'screen-label', 'What is query optimization?'));
 
   const body = el('div', 'intro-body');
@@ -110,7 +108,6 @@ function renderIntro({ go }) {
 
 function renderGuide({ go }) {
   const screen = el('div', 'screen screen--guide');
-  screen.appendChild(el('p', 'eyebrow', 'Guide'));
   screen.appendChild(el('h2', 'screen-label', 'What makes a query efficient'));
 
   screen.appendChild(renderTipsList());
@@ -126,7 +123,6 @@ function renderGuide({ go }) {
 const MODE_INTROS = {
   howto1: {
     id: 'howto1',
-    eyebrow: 'Game mode 1 instructions',
     title: 'Train Race!',
     body: [
       'Welcome to game mode 1.',
@@ -139,7 +135,6 @@ const MODE_INTROS = {
   },
   howto2: {
     id: 'howto2',
-    eyebrow: 'Game mode 2 instructions',
     title: "Oh no! The train can't make it to the station!",
     body: [
       'Welcome to game mode 2.',
@@ -151,7 +146,6 @@ const MODE_INTROS = {
   },
   howto3: {
     id: 'howto3',
-    eyebrow: 'Game mode 3 instructions',
     title: 'All Aboard!',
     body: [
       'Welcome to game mode 3.',
@@ -166,7 +160,6 @@ const MODE_INTROS = {
 
 function renderModeIntro(config, { go }) {
   const screen = el('div', 'screen screen--intro');
-  screen.appendChild(el('p', 'eyebrow', config.eyebrow));
   screen.appendChild(el('h2', 'screen-label', config.title));
 
   const body = el('div', 'intro-body');
@@ -880,7 +873,6 @@ function renderFinal() {
   logEvent('finished', {});
 
   const screen = el('div', 'screen');
-  screen.appendChild(el('p', 'eyebrow', 'Complete'));
   screen.appendChild(el('h1', 'title', 'Journey complete'));
   screen.appendChild(
     el('p', 'subtitle', 'Thank you for playing the game. Please return to the survey now.')
